@@ -26,6 +26,8 @@ custom:
   frontend: 
     bucket: ${self:service}-${self:provider.stage} # Provide a bucket name
     dir: './frontend' # Set frontend directory to publish
+    cacheControl: '31536000' # Set max-age cache control, default: 31536000
+    deploy: 'sync' # Set deploy strategy to cp (upload every time all files), or sync (upload only newer files), default: sync
 ```
 
 ### Bucket information
@@ -49,15 +51,24 @@ layers:
   None
 ```
 
+## Commands
+
 ### Deploy files
 
-Deploy static websites files
+Deploy static websites files:
 ```bash
 $ serverless deploy frontend
 ```
 this will sync your configured frontend directory with S3 bucket.
 
-_Note: this command is a wrapper of `aws s3 sync`, so you must have the [AWS CLI](https://docs.aws.amazon.com/en_us/cli/latest/userguide/cli-chap-install.html) installed._
+_Note: this command is a wrapper of `aws s3 cp <local path> <bucket> --recursive`, so you must have the [AWS CLI](https://docs.aws.amazon.com/en_us/cli/latest/userguide/cli-chap-install.html) installed._
+
+### Empty bucket
+
+Remove all objects from bucket:
+```bash
+$ serverless remove frontend
+```
 
 ### Cleaning
 
@@ -68,4 +79,6 @@ When you destroy the environment with `serverless remove` the created bucket wil
 - [x] Create bucket
 - [x] Deploy on bucket
 - [x] Empty bucket during serverless remove phase
+- [x] Support bucket renaming
+- [x] Support multiples deploy strategies
 - [ ] Add CloudFront configurations

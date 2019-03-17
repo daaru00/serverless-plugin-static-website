@@ -13,9 +13,6 @@ class ServerlessPlugin {
 
     this.commands = {
       deploy: {
-        lifecycleEvents: [
-          'info',
-        ],
         commands: {
           frontend: {
             usage: 'Deploy frontend assets to specific S3 bucket',
@@ -25,6 +22,16 @@ class ServerlessPlugin {
           }
         }
       },
+      remove: {
+        commands: {
+          frontend: {
+            usage: 'Remove all frontend assets from specific S3 bucket',
+            lifecycleEvents: [
+              'execute',
+            ],
+          }
+        }
+      }
     };
 
     this.hooks = {
@@ -32,6 +39,7 @@ class ServerlessPlugin {
       'before:remove:remove': this.deleteResources.bind(this),
       'before:deploy:frontend:execute': this.deployFrontendBefore.bind(this),
       'deploy:frontend:execute': this.deployFrontend.bind(this),
+      'remove:frontend:execute': this.deleteResources.bind(this),
       'after:deploy:frontend:execute': this.deployFrontendAfter.bind(this),
       'after:aws:info:displayServiceInfo': this.info.bind(this)
     };
@@ -41,9 +49,17 @@ class ServerlessPlugin {
    * Adding resources
    */
 
-  createResources () {
+  async createResources () {
     if (this.frontendConfig.bucket === undefined) {
       return;
+    }
+
+    const stack = await this.getStackOutputData();
+    if (stack !== undefined) {
+      const frontendOutputBucket = stack.Outputs.find((output) => output.OutputKey === 'FrontendBucket');
+      if (frontendOutputBucket !== undefined && this.frontendConfig.bucket !== frontendOutputBucket.OutputValue) {
+        await this.deleteResources(frontendOutputBucket.OutputValue);
+      }
     }
 
     this.serverless.service.provider.compiledCloudFormationTemplate.Resources['Frontend'] = JSON.parse(`
@@ -82,16 +98,17 @@ class ServerlessPlugin {
   /**
    * Delete resources
    */
-  async deleteResources () {
-    if (this.frontendConfig.bucket === undefined) {
+  async deleteResources (bucket) {
+    if (this.frontendConfig.bucket === undefined && bucket === undefined) {
       return;
     }
 
-    this.serverless.cli.log(`Deleting all objects from bucket ${this.frontendConfig.bucket}..`);
+    const bucketName = bucket ? bucket : this.frontendConfig.bucket;
+    this.serverless.cli.log(`Deleting all objects from bucket ${bucketName}..`);
 
-    const keys = await this.listBucketKeys();
+    const keys = await this.listBucketKeys(undefined, bucket);
     await this.provider.request('S3', 'deleteObjects', {
-      Bucket: this.frontendConfig.bucket,
+      Bucket: bucketName,
       Delete: {
         Objects: keys.map((key) => ({
           Key: key
@@ -99,25 +116,26 @@ class ServerlessPlugin {
       }
     });
 
-    this.serverless.cli.log(`Bucket ${this.frontendConfig.bucket} empty!`);
+    this.serverless.cli.log(`Bucket ${bucketName} empty!`);
   }
 
   /**
    * List bucket keys
    */
-  async listBucketKeys (nextToken) {
-    if (this.frontendConfig.bucket === undefined) {
+  async listBucketKeys (nextToken, bucket) {
+    if (this.frontendConfig.bucket === undefined && bucket === undefined) {
       return [];
     }
 
+    const bucketName = bucket ? bucket : this.frontendConfig.bucket;
     const response = await this.provider.request('S3', 'listObjectsV2', {
-      Bucket: this.frontendConfig.bucket,
+      Bucket: bucketName,
       ContinuationToken: nextToken
     });
 
     let keys = response.Contents.map((content) => content.Key);
     if (response.IsTruncated && response.NextContinuationToken) {
-      const nextKeys = await this.listBucketKeys(response.NextContinuationToken);
+      const nextKeys = await this.listBucketKeys(response.NextContinuationToken, bucket);
       keys = keys.concat(nextKeys);
     }
 
@@ -149,9 +167,16 @@ class ServerlessPlugin {
     const profile = this.serverless.service.provider.profile;
     const env = { 'AWS_ACCESS_KEY_ID': process.env.AWS_ACCESS_KEY_ID, 'AWS_SECRET_ACCESS_KEY': process.env.AWS_SECRET_ACCESS_KEY };
 
+    let command = '';
+    if (this.frontendConfig.deploy === 'cp') {
+      command = `cp ${this.frontendConfig.dir} s3://${this.frontendConfig.bucket}/ --acl public-read --cache-control max-age=${this.frontendConfig.cacheControl || '31536000'} --recursive`;
+    }else{
+      command = `sync ${this.frontendConfig.dir} s3://${this.frontendConfig.bucket}/ --acl public-read --cache-control max-age=${this.frontendConfig.cacheControl || '31536000'} --delete`;
+    }
+
     return new Promise((resolve, reject) => {
       exec(
-        `aws ${profile ? `--profile ${profile}` : ''} s3 sync ${this.frontendConfig.dir} s3://${this.frontendConfig.bucket}/ --acl public-read --delete`,
+        `aws ${profile ? `--profile ${profile}` : ''} s3 ${command}`,
         (error, stdout, stderr) => {
           if (error) {
             reject(error);
@@ -165,7 +190,7 @@ class ServerlessPlugin {
 
           if (stdout.trim() !== '' && stderr.trim() === '') {
             this.serverless.cli.log('---------------------------')
-            this.serverless.cli.log(stdout.trim())
+            this.serverless.cli.log(stdout.trim().replace('remaining', ''))
             this.serverless.cli.log('---------------------------')
             resolve();
             return;
@@ -196,23 +221,36 @@ class ServerlessPlugin {
    */
 
   async info () {
-    const response = await this.provider.request(
-      'CloudFormation',
-      'describeStacks',
-      { StackName: this.provider.naming.getStackName() }
-    );
-
-    if (response.Stacks.length === 0) {
+    const stack = await this.getStackOutputData();
+    if (stack === undefined) {
       return;
     }
 
-    const stack = response.Stacks[0];
     const frontendOutputWebsite = stack.Outputs.find((output) => output.OutputKey === 'FrontendWebsite');
     if (frontendOutputWebsite === undefined) {
       return;
     }
 
     this.serverless.cli.consoleLog(`${chalk.yellow('frontend:')} ${frontendOutputWebsite.OutputValue}`);
+  }
+
+  async getStackOutputData () {
+    let response;
+    try {
+      response = await this.provider.request(
+        'CloudFormation',
+        'describeStacks',
+        { StackName: this.provider.naming.getStackName() }
+      );  
+    }catch(exception){
+      return;
+    }
+    
+    if (response.Stacks.length === 0) {
+      return;
+    }
+
+    return response.Stacks[0];
   }
 
 }
