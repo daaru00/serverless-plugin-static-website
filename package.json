@@ -1,0 +1,25 @@
+{
+  "name": "serverless-plugin-static-website",
+  "version": "1.0.0",
+  "description": "Serverless plugin to easily deploy a static website frontend",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/daaru00/serverless-plugin-static-website.git"
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "s3",
+    "static-website"
+  ],
+  "author": "Fabio Gollinucci",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/daaru00/serverless-plugin-static-website/issues"
+  },
+  "homepage": "https://github.com/daaru00/serverless-plugin-static-website#readme",
+  "dependencies": {
+    "chalk": "^2.4.2"
+  }
+}
