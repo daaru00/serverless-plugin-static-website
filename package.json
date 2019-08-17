@@ -21,5 +21,11 @@
   "homepage": "https://github.com/daaru00/serverless-plugin-static-website#readme",
   "dependencies": {
     "chalk": "^2.4.2"
+  },
+  "devDependencies": {
+    "eslint": "^6.1.0"
+  },
+  "scripts": {
+    "lint": "eslint --fix ."
   }
 }

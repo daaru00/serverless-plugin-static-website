@@ -30,7 +30,19 @@ custom:
     deploy: 'sync' # Set deploy strategy to cp (upload every time all files), or sync (upload only newer files), default: sync
 ```
 
-### Bucket information
+## CloudFront
+
+If you want to enable CloudFront distribution in front of S3 bucket add this configurations to `custom.frontend` key:
+
+```yaml
+custom:
+  frontend: 
+    # ...frontend configuration..
+    cloudfront: 
+      enabled: true
+```
+
+### Website information
 
 At the end of `serverless deploy` you will see inside "Service Information" section the websites bucket's URL:
 ```
@@ -73,12 +85,3 @@ $ serverless remove frontend
 ### Cleaning
 
 When you destroy the environment with `serverless remove` the created bucket will be emptied automatically to permit the deletion.
-
-### TODO
-
-- [x] Create bucket
-- [x] Deploy on bucket
-- [x] Empty bucket during serverless remove phase
-- [x] Support bucket renaming
-- [x] Support multiples deploy strategies
-- [ ] Add CloudFront configurations
