@@ -32,14 +32,18 @@ custom:
 
 ## CloudFront
 
-If you want to enable CloudFront distribution in front of S3 bucket add this configurations to `custom.frontend` key:
+If you want to enable CloudFront distribution in front of S3 bucket add `cdn` configurations to `custom.frontend` key:
 
 ```yaml
 custom:
   frontend: 
     # ...frontend configuration..
-    cloudfront: 
+    cdn: 
       enabled: true
+      aliases: # Set aliases, default empty (default CloudFront domain)
+       - www.mywebsite.com
+      priceClass: PriceClass_All # Set price class, default: PriceClass_100
+      certificate: 'arn:aws:acm:region:account-id:certificate/certificate-id' # Set custom certificate
 ```
 
 ### Website information
