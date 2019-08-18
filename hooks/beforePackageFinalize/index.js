@@ -21,6 +21,10 @@ class Controller {
       await oldBucket.empty()
     }
 
+    // Init properties
+
+    this.cloudFormationTemplate = this.serverless.service.provider.compiledCloudFormationTemplate
+
     // Create S3 Bucket
 
     const bucket = new S3BucketResource({

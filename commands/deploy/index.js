@@ -19,7 +19,7 @@ class Controller {
    * Before command
    */
   async before() {
-    if (this.frontendConfig.bucket === undefined) {
+    if (this.config.bucket === undefined) {
       this.serverless.cli.log('No bucket provided in custom.frontend configuration')
       return
     }
@@ -52,7 +52,7 @@ class Controller {
    * After command
    */
   async after() {
-    if (this.frontendConfig.bucket === undefined) {
+    if (this.config.bucket === undefined) {
       return
     }
 

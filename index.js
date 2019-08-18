@@ -10,7 +10,6 @@ class ServerlessPlugin {
     this.provider = this.serverless.getProvider('aws')
     this.config = _.get(this.serverless.service, 'custom.frontend', {})
     this.service = this.serverless.service.getServiceObject()
-    this.cloudFormationTemplate = this.serverless.service.provider.compiledCloudFormationTemplate
 
     this.commands = {
       deploy: {

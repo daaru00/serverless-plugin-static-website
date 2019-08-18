@@ -1,3 +1,4 @@
+const chalk = require('chalk')
 const { exec } = require('child_process')
 
 module.exports = class S3Bucket {
@@ -44,14 +45,14 @@ module.exports = class S3Bucket {
 
     let command = ''
     if (strategy === 'cp') {
-      command = `cp ${directory} s3://${this.name}/ --acl public-read --cache-control max-age=${cacheControl} --recursive`
+      command = `cp ${directory} s3://${this.name}/ --recursive`
     } else {
-      command = `sync ${directory} s3://${this.name}/ --acl public-read --cache-control max-age=${cacheControl} --delete`
+      command = `sync ${directory} s3://${this.name}/ --delete`
     }
 
-    await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       exec(
-        `aws ${profile ? `--profile ${profile}` : ''} s3 ${command}`,
+        `aws ${profile ? `--profile ${profile}` : ''} s3 ${command} --acl public-read --cache-control max-age=${cacheControl} --no-progress`,
         (error, stdout, stderr) => {
           if (error) {
             reject(error)
@@ -64,9 +65,9 @@ module.exports = class S3Bucket {
           }
 
           if (stdout.trim() !== '' && stderr.trim() === '') {
-            if (typeof logger === 'function') {
+            if (logger !== undefined && typeof logger.log === 'function') {
               logger.log('---------------------------')
-              logger.log(stdout.trim().replace('remaining', ''))
+              logger.consoleLog(chalk.yellow(stdout.trim()))
               logger.log('---------------------------')
             }
             resolve()
@@ -74,10 +75,10 @@ module.exports = class S3Bucket {
           }
 
           if (stderr.trim() !== '') {
-            if (typeof logger === 'function') {
-              logger.cli.log('---------------------------')
-              logger.cli.log(stderr.trim())
-              logger.cli.log('---------------------------')
+            if (logger !== undefined && typeof logger.log === 'function') {
+              logger.log('---------------------------')
+              logger.consoleLog(chalk.red(stderr.trim()))
+              logger.log('---------------------------')
             }
             reject()
             return
@@ -94,7 +95,7 @@ module.exports = class S3Bucket {
    * Delete all content
    */
   async empty () {
-    const keys = await this.listBucketKeys()
+    const keys = await this.listKeys()
     await this.provider.request('S3', 'deleteObjects', {
       Bucket: this.name,
       Delete: {

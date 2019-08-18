@@ -16,7 +16,7 @@ module.exports = class S3Bucket {
    * @returns {string}
    */
   toCloudFormationObject() {
-    return JSON.parse(`
+    const template = `
       {
         "Type": "AWS::S3::Bucket",
         "Properties": {
@@ -28,6 +28,7 @@ module.exports = class S3Bucket {
           }
         }
       }
-    `)
+    `
+    return JSON.parse(template)
   }
 }

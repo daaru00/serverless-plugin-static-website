@@ -14,10 +14,10 @@ module.exports = class CloudFrontDistribution {
    * 
    * @param {string[]} paths
    */
-  async invalidate({paths}) {
+  async invalidate({paths, logger}) {
     paths = paths || ['/*']
 
-    await this.provider.request(
+    const response = await this.provider.request(
       'CloudFront',
       'createInvalidation',
       { 
@@ -30,6 +30,10 @@ module.exports = class CloudFrontDistribution {
           }
         }
       }
-    )  
+    )
+    
+    if (logger !== undefined && typeof logger.log === 'function') {
+      logger.log(`Invalidation id: ${response.Invalidation.Id}`)
+    }
   }
 }

@@ -19,29 +19,29 @@ module.exports = class CloudFrontDistribution {
   toCloudFormationObject() {
     const aliasesString = JSON.stringify(this.aliases)
 
-    let certificate = JSON.parse(`
+    let certificateProperty = `
       {
         "CloudFrontDefaultCertificate" : "true"
       }
-    `)
+    `
 
     if (this.certificate) {
-      certificate = JSON.parse(`
+      certificateProperty = `
         {
           "CloudFrontDefaultCertificate" : "false",
           "SslSupportMethod": "sni-only",
           "AcmCertificateArn": "${this.certificate}"
         }
-      `)
+      `
     }
 
-    return JSON.parse(`
+    const template = `
       {
         "Type": "AWS::CloudFront::Distribution",
         "Properties": {
           "DistributionConfig": {
             "Origins": [{
-              "DomainName": "Fn::GetAtt" : [ "${this.bucketCFKey}", "WebsiteURL" ],
+              "DomainName": { "Fn::GetAtt": [ "${this.bucketCFKey}", "DomainName" ] },
               "Id": "S3Origin",
               "CustomOriginConfig": {
                 "OriginProtocolPolicy": "http-only"
@@ -58,13 +58,15 @@ module.exports = class CloudFrontDistribution {
                 "Cookies": { "Forward": "none" }
               },
               "ViewerProtocolPolicy": "redirect-to-https",
-              "Compress": "true",
+              "Compress": "true"
             },
             "PriceClass": "${this.priceClass || 'PriceClass_100'}",
-            "ViewerCertificate": ${certificate}
+            "ViewerCertificate": ${certificateProperty}
           }
         }
       }
-    `)
+    `
+
+    return JSON.parse(template)
   }
 }
